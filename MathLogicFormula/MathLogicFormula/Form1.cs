@@ -20,7 +20,7 @@ namespace MathLogicFormula
         {
             InitializeComponent();
         }
-
+        //Test Change
         private void generateFormulaToolStripMenuItem_Click(object sender, EventArgs e) //Генерация формулы
         {
             var form = new Generator();
