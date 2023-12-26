@@ -1,7 +1,6 @@
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\bin\Debug\MathLogicFormula.exe.config
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\bin\Debug\MathLogicFormula.exe
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\bin\Debug\MathLogicFormula.pdb
-C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.csproj.AssemblyReference.cache
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.EnterFormula.resources
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.Form1.resources
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.Properties.Resources.resources
@@ -10,3 +9,4 @@ C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogic
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.exe
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.pdb
 C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.Generator.resources
+C:\Users\Professional\Desktop\C#\Discr\FormulaNoRegex\MathLogicFormula\MathLogicFormula\obj\Debug\MathLogicFormula.csproj.AssemblyReference.cache

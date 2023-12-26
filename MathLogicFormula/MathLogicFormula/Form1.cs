@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Linq;
+using System.Diagnostics;
 
 namespace MathLogicFormula
 {
@@ -258,7 +260,7 @@ namespace MathLogicFormula
             switch (CurNode.Text)  //проверяем нод
             {
                 case "|":        //если |
-                    if (CurNode.Parent == null)   //если его родитель пустой, т.е. это верхний нод - запуск поиска от детей
+                    if (CurNode.Parent == null || CurNode.Parent.Text == "|")   //если его родитель пустой, т.е. это верхний нод - запуск поиска от детей
                     {
                         FindOR(CurNode.Nodes[0]);
                         FindOR(CurNode.Nodes[1]);
@@ -290,7 +292,7 @@ namespace MathLogicFormula
 
                             CurNode = ParentNode;           //текущий нод = тот на котором сейчас |
 
-                            if (CurNode.Parent == null)     //если он стал верхним - все хорошо, запускаем поиск вниз
+                            if (CurNode.Parent == null || CurNode.Parent.Text == "|")     //если он стал верхним (или уперся в такой же) - все хорошо, запускаем поиск вниз
                             {
                                 FindOR(CurNode.Nodes[0]);
                                 FindOR(CurNode.Nodes[1]);
@@ -322,10 +324,10 @@ namespace MathLogicFormula
             switch (CurNode.Text)  //проверяем нод
             {
                 case "&":        //если |
-                    if (CurNode.Parent == null)   //если его родитель пустой, т.е. это верхний нод - запуск поиска от детей
+                    if (CurNode.Parent == null || CurNode.Parent.Text == "&")   //если его родитель пустой, т.е. это верхний нод - запуск поиска от детей
                     {
-                        FindOR(CurNode.Nodes[0]);
-                        FindOR(CurNode.Nodes[1]);
+                        FindAND(CurNode.Nodes[0]);
+                        FindAND(CurNode.Nodes[1]);
                     }
                     else //это не верхний нод
                     {
@@ -354,7 +356,7 @@ namespace MathLogicFormula
 
                             CurNode = ParentNode;           //текущий нод = тот на котором сейчас |
 
-                            if (CurNode.Parent == null)     //если он стал верхним - все хорошо, запускаем поиск вниз
+                            if (CurNode.Parent == null || CurNode.Parent.Text == "&")     //если он стал верхним (или уперся в такой же) - все хорошо, запускаем поиск вниз
                             {
                                 FindAND(CurNode.Nodes[0]);
                                 FindAND(CurNode.Nodes[1]);
@@ -531,6 +533,605 @@ namespace MathLogicFormula
             if (TreeCreated)
             {
                 TesnOtric();
+            }
+        }
+
+        private bool CheckEquivalency(string s1, string s2)
+        {
+            IEnumerable<char> ie = s1.Distinct();
+            int count = 0;
+            char[] diffchar = new char[27];                         //их макс кол-во (так как максимум используем 26)
+            foreach (char c in ie)
+            {
+                if (char.IsLetter(c))
+                {
+                    diffchar[count] = c;
+                    count++;
+                }
+            }
+
+            bool[] Val = new bool[count];
+            int[] iAltVal = new int[count];
+            bool[] bResults = new bool[(int)Math.Pow(2, count)];
+            bool[] bResultsTransformed = new bool[(int)Math.Pow(2, count)];
+
+            bResults[0] = CalculateFormula(s1, Val, diffchar);
+            bResultsTransformed[0] = CalculateFormula(s2, Val, diffchar);
+
+            for (int i = 0; i < count; i++)
+            {
+                FormulaFromTableBox.Text += diffchar[i] + " ";
+            }
+            FormulaFromTableBox.AppendText("   F1   F2");
+            FormulaFromTableBox.AppendText(Environment.NewLine);
+            for (int i = 0; i < count; i++)
+            {
+                FormulaFromTableBox.Text += "0 ";
+            }
+            FormulaFromTableBox.Text += "   " + Convert.ToInt32(bResults[0]) + "   " + Convert.ToInt32(bResultsTransformed[0]);
+            FormulaFromTableBox.AppendText(Environment.NewLine);
+
+            if (bResults[0] != bResultsTransformed[0])
+            {
+                return false;
+            }
+
+            for (int i = 1; i < Math.Pow(2, count); i++)
+            {
+                if (iAltVal[0] == 0)
+                {
+                    iAltVal[0] = 1;
+                }
+                else
+                {
+                    int j = 0;
+                    while (iAltVal[j] == 1)
+                    {
+                        iAltVal[j] = 0;
+                        j++;
+                        if (j == count)
+                        {
+                            break;
+                        }
+                    }
+                    iAltVal[j] = 1;
+                }
+                for (int j = 0; j < count; j++)
+                {
+                    if (iAltVal[j] == 0)
+                    {
+                        Val[j] = false;
+                    }
+                    else
+                    {
+                        Val[j] = true;
+                    }
+                }
+                bResults[i] = CalculateFormula(s1, Val, diffchar);
+                bResultsTransformed[i] = CalculateFormula(s2, Val, diffchar);
+
+                for (int j = 0; j < count; j++)
+                {
+                    FormulaFromTableBox.Text += iAltVal[j] + " ";
+                }
+
+                FormulaFromTableBox.Text += "   " + Convert.ToInt32(bResults[i]) + "   " + Convert.ToInt32(bResultsTransformed[i]);
+                FormulaFromTableBox.AppendText(Environment.NewLine);
+
+                if (bResults[i] != bResultsTransformed[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void equivalencyCheckToolStripMenuItem_Click(object sender, EventArgs e) //проверка эквивалентности исходной формулы и формулы после приведения по алгоритму (деревом)
+        {
+            IEnumerable<char> ie = CurrentFormula.Distinct();       //получаем все переменные (буквы)
+            int count = 0;
+            char[] diffchar = new char[27];                         //их макс кол-во (так как максимум используем 26)
+            foreach (char c in ie)
+            {
+                if (char.IsLetter(c))
+                {                   
+                    diffchar[count] = c;
+                    count++;
+                }
+            }
+
+            string AltFormula = transformedTextbox.Text;            //альтернативная формула (здесь проверка на ее наличие)
+            bool[] Val = new bool[count];
+            int[] iAltVal = new int[count];
+            bool[] bResults = new bool[(int)Math.Pow(2, count)];
+            bool[] bResultsTransformed = new bool[(int)Math.Pow(2, count)];
+            bool bFlag = true;
+
+            bResults[0] = CalculateFormula(CurrentFormula, Val, diffchar);
+            bResultsTransformed[0] = CalculateFormula(AltFormula, Val, diffchar);
+
+            for (int i = 0; i < count; i++)
+            {
+                ValTextbox.Text += diffchar[i] + " ";
+            }
+            ValTextbox.AppendText("   F1   F2");
+            ValTextbox.AppendText(Environment.NewLine);
+            for (int i = 0; i < count; i++)
+            {
+                ValTextbox.Text += "0 ";
+            }
+            ValTextbox.Text += "   " + Convert.ToInt32(bResults[0]) + "   " + Convert.ToInt32(bResultsTransformed[0]);
+            ValTextbox.AppendText(Environment.NewLine);
+
+            if (bResults[0] != bResultsTransformed[0])
+            {
+                bFlag = false;
+                MessageBox.Show("NOT EQUIVALENT");
+            }
+
+            for (int i = 1; i<Math.Pow(2, count); i++)
+            {
+                if (iAltVal[0] == 0)
+                {
+                    iAltVal[0] = 1;
+                }
+                else
+                {
+                    int j = 0;
+                    while (iAltVal[j] == 1)
+                    {
+                        iAltVal[j] = 0;
+                        j++;
+                        if (j == count)
+                        {
+                            break;
+                        }
+                    }
+                    iAltVal[j] = 1;
+                }
+                for (int j = 0; j<count; j++)
+                {
+                    if (iAltVal[j] == 0)
+                    {
+                        Val[j] = false;
+                    }
+                    else
+                    {
+                        Val[j] = true;
+                    }
+                }              
+                bResults[i] = CalculateFormula(CurrentFormula, Val, diffchar);
+                bResultsTransformed[i] = CalculateFormula(AltFormula, Val, diffchar);
+
+                for (int j = 0; j < count; j++)
+                {
+                    ValTextbox.Text += iAltVal[j] + " ";
+                }
+
+                ValTextbox.Text += "   " + Convert.ToInt32(bResults[i]) + "   " + Convert.ToInt32(bResultsTransformed[i]);
+                ValTextbox.AppendText(Environment.NewLine);
+
+                if (bResults[i] != bResultsTransformed[i])
+                {
+                    bFlag = false;
+                    MessageBox.Show("NOT EQUIVALENT");
+                    break;
+                }
+            }
+            if (bFlag)
+            {
+                MessageBox.Show("Формулы эквивалентны");
+            }                                 
+        }
+
+        private int FindCharInArray(char[] cAr, char c)
+        {
+            for(int i = 0; i<cAr.Length; i++)
+            {
+                if (c == cAr[i])
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private bool CalculateFormula(string s, bool[] Val, char[] Chars) //Посчитать значение формулы
+        {
+            if (string.IsNullOrEmpty(s))    //пустая строка - не формула
+            {
+                return false;
+            }
+            if (s.Length == 1 && char.IsLetter(s[0]))   //случай с единичным символом - должна быть переменная
+            {
+                int index = FindCharInArray(Chars, s[0]);
+                return Val[index];
+            }
+            else     //не единичная длина формулы
+            {
+                if (s[0] == '(' && s[s.Length - 1] == ')')  //если формула не состоит только из переменной, она обернута в скобки
+                {
+                    if (s[1] == '!')   //случай с отрицанием
+                    {
+                        return !CalculateFormula(s.Substring(2, s.Length - 3), Val, Chars);
+                    }
+                    else // случай с операциями внутри скобки
+                    {
+                        int BracketCnt = 0; //проверка по балансу скобок
+                        for (int i = 1; i < s.Length - 1; i++)
+                        {
+                            if (s[i] == '(')
+                            {
+                                BracketCnt++;
+                            }
+                            if (s[i] == ')')
+                            {
+                                BracketCnt--;
+                            }
+                            //если найдена операция с верным балансом скобок, проверка левой и правой частей
+                            if ((s[i] == '|' || s[i] == '&' || s[i] == '>') && (BracketCnt == 0))
+                            {
+                                string sFirst = s.Substring(1, i - 1);
+                                string sSecond = s.Substring(i + 1, s.Length - 2 - i);
+                                switch (s[i])
+                                {
+                                    case '|':
+                                        return CalculateFormula(sFirst, Val, Chars) || CalculateFormula(sSecond, Val, Chars);
+                                    case '&':
+                                        return CalculateFormula(sFirst, Val, Chars) && CalculateFormula(sSecond, Val, Chars);
+                                    case '>':
+                                        return !CalculateFormula(sFirst, Val, Chars) || CalculateFormula(sSecond, Val, Chars);
+                                }
+                                return false;
+                            }
+                        }
+                        //если операции с верным балансом скобок не найдено, формула неверна
+                        return false;
+                    }
+                }
+                else //если не обернута в скобки, то формула неверна
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private string GetSumOfChars(List<string> lc, string Oper) //Для создания формул вида a & b & c & d...
+        {
+            string sRes = "";
+            if (lc.Count % 2 == 0)
+            {
+                List<string> lss = new List<string>();
+                for (int i = 0; i<lc.Count; i=i+2)
+                {
+                    string st = "(" + lc[i] + Oper + lc[i + 1] + ")";
+                    lss.Add(st);
+                }
+                if (lss.Count() > 0)
+                {
+                    sRes = lss[0];
+                }
+                for (int i = 1; i<lss.Count; i++)
+                {
+                    sRes = "(" + sRes + Oper + lss[i] + ")";
+                }
+            }
+            else
+            {
+                List<string> lss = new List<string>();
+                for (int i = 1; i < lc.Count; i = i + 2)
+                {
+                    string st = "(" + lc[i] + Oper + lc[i + 1] + ")";
+                    lss.Add(st);
+                }
+                sRes = lc[0];
+                for (int i = 0; i < lss.Count; i++)
+                {
+                    sRes = "(" + sRes + Oper + lss[i] + ")";
+                }
+            }
+            return sRes;
+        }
+
+        private string GetDNFByFormula(string s) //Получить ДНФ по формуле
+        {
+            IEnumerable<char> ie = CurrentFormula.Distinct();       //получаем все переменные (буквы)
+            int count = 0;
+            char[] diffchar = new char[27];                         //их макс кол-во (так как максимум используем 26)
+            foreach (char c in ie)
+            {
+                if (char.IsLetter(c))
+                {
+                    diffchar[count] = c;
+                    count++;
+                }
+            }
+
+            bool[] Val = new bool[count];
+            int[] iAltVal = new int[count];
+            bool[] bResults = new bool[(int)Math.Pow(2, count)];
+            bool bFlag = true;
+            List<string> TotalUsed = new List<string>();
+
+            bResults[0] = CalculateFormula(s, Val, diffchar);
+            List<string> UsedVars = new List<string>();
+
+            for (int i = 0; i < count; i++)
+            {
+                ValTextbox.Text += diffchar[i] + " ";
+            }
+            ValTextbox.AppendText("   F1");
+            ValTextbox.AppendText(Environment.NewLine);
+            for (int i = 0; i < count; i++)
+            {
+                ValTextbox.Text += "0 ";
+            }
+            ValTextbox.Text += "   " + Convert.ToInt32(bResults[0]);
+            ValTextbox.AppendText(Environment.NewLine);
+
+
+            if (Convert.ToInt32(bResults[0]) == 1)
+            {
+                for (int j = 0; j < count; j++)
+                {
+                    if (iAltVal[j] == 0)
+                    {
+                        UsedVars.Add("(!" + diffchar[j] + ")");
+                    }
+                    else
+                    {
+                        UsedVars.Add(diffchar[j].ToString());
+                    }
+                }
+                string t = GetSumOfChars(UsedVars, "&");
+                TotalUsed.Add(t);
+            }
+            
+            for (int i = 1; i < Math.Pow(2, count); i++)
+            {
+                if (iAltVal[0] == 0)
+                {
+                    iAltVal[0] = 1;
+                }
+                else
+                {
+                    int j = 0;
+                    while (iAltVal[j] == 1)
+                    {
+                        iAltVal[j] = 0;
+                        j++;
+                        if (j == count)
+                        {
+                            break;
+                        }
+                    }
+                    iAltVal[j] = 1;
+                }
+                for (int j = 0; j < count; j++)
+                {
+                    if (iAltVal[j] == 0)
+                    {
+                        Val[j] = false;
+                    }
+                    else
+                    {
+                        Val[j] = true;
+                    }
+                }
+                bResults[i] = CalculateFormula(CurrentFormula, Val, diffchar);
+                for (int j = 0; j < count; j++)
+                {
+                    ValTextbox.Text += iAltVal[j] + " ";
+                }
+                ValTextbox.Text += "   " + Convert.ToInt32(bResults[i]);
+                ValTextbox.AppendText(Environment.NewLine);
+                UsedVars = new List<string>();
+                if (Convert.ToInt32(bResults[i]) == 1)
+                {
+                    for (int j = 0; j<count; j++)
+                    {
+                        if (iAltVal[j] == 0)
+                        {
+                            UsedVars.Add("(!" + diffchar[j] + ")");
+                        }
+                        else
+                        {
+                            UsedVars.Add(diffchar[j].ToString());
+                        }
+                    }
+                    string t = GetSumOfChars(UsedVars, "&");
+                    TotalUsed.Add(t);
+                }
+            }
+            return GetSumOfChars(TotalUsed, "|");
+        }
+
+        private string GetKNFByFormula(string s)
+        {
+            IEnumerable<char> ie = CurrentFormula.Distinct();       //получаем все переменные (буквы)
+            int count = 0;
+            char[] diffchar = new char[27];                         //их макс кол-во (так как максимум используем 26)
+            foreach (char c in ie)
+            {
+                if (char.IsLetter(c))
+                {
+                    diffchar[count] = c;
+                    count++;
+                }
+            }
+
+            bool[] Val = new bool[count];
+            int[] iAltVal = new int[count];
+            bool[] bResults = new bool[(int)Math.Pow(2, count)];
+            bool bFlag = true;
+            List<string> TotalUsed = new List<string>();
+
+            bResults[0] = CalculateFormula(s, Val, diffchar);
+            List<string> UsedVars = new List<string>();
+            if (Convert.ToInt32(bResults[0]) == 0)
+            {
+                for (int j = 0; j < count; j++)
+                {
+                    if (iAltVal[j] == 1)
+                    {
+                        UsedVars.Add("!" + diffchar[j]);
+                    }
+                    else
+                    {
+                        UsedVars.Add(diffchar[j].ToString());
+                    }
+                }
+                string t = GetSumOfChars(UsedVars, "|");
+                TotalUsed.Add(t);
+            }
+
+            for (int i = 1; i < Math.Pow(2, count); i++)
+            {
+                if (iAltVal[0] == 0)
+                {
+                    iAltVal[0] = 1;
+                }
+                else
+                {
+                    int j = 0;
+                    while (iAltVal[j] == 1)
+                    {
+                        iAltVal[j] = 0;
+                        j++;
+                        if (j == count)
+                        {
+                            break;
+                        }
+                    }
+                    iAltVal[j] = 1;
+                }
+                for (int j = 0; j < count; j++)
+                {
+                    if (iAltVal[j] == 0)
+                    {
+                        Val[j] = false;
+                    }
+                    else
+                    {
+                        Val[j] = true;
+                    }
+                }
+                bResults[i] = CalculateFormula(CurrentFormula, Val, diffchar);
+
+                UsedVars = new List<string>();
+                if (Convert.ToInt32(bResults[i]) == 1)
+                {
+                    for (int j = 0; j < count; j++)
+                    {
+                        if (iAltVal[j] == 1)
+                        {
+                            UsedVars.Add("!" + diffchar[j]);
+                        }
+                        else
+                        {
+                            UsedVars.Add(diffchar[j].ToString());
+                        }
+                    }
+                    string t = GetSumOfChars(UsedVars, "|");
+                    TotalUsed.Add(t);
+                }
+            }
+            return GetSumOfChars(TotalUsed, "&");
+        }
+
+        private void compareTimesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            ////Время алгоритма через таблицу истинности
+            //Stopwatch t = new Stopwatch();
+            //t.Start();
+            //string s1 = GetDNFByFormula(CurrentFormula);
+            //IstBox.Text = s1;
+            //t.Stop();
+            //TimeSpan ts = t.Elapsed;
+
+            //string elapsedTime1 = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            //    ts.Hours, ts.Minutes, ts.Seconds,
+            //    ts.Milliseconds / 10);
+
+            ////Время алгоритма через дерево
+            //Stopwatch t2 = new Stopwatch();
+            //t2.Start();
+
+            //FormulaTree.Nodes.Clear();
+            //PopulateTree(CurrentFormula, null);
+            //FormulaTree.ExpandAll();
+
+            //KillImplications(FormulaTree.Nodes[0]);
+            //DrownNegatives(FormulaTree.Nodes[0]);
+            //transformedTextbox.Text = GetFormulaFromTreeView(FormulaTree.Nodes[0]);
+
+            //FormulaTree.ExpandAll();
+            //RiseOR();
+            //t2.Stop();
+            //TimeSpan ts2 = t2.Elapsed;
+
+            //string elapsedTime2 = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            //    ts2.Hours, ts2.Minutes, ts2.Seconds,
+            //    ts2.Milliseconds / 10);
+            //MessageBox.Show("Время построения через таблицу истинности: " + elapsedTime1 + ". Время построения через дерево: " + elapsedTime2);
+        }//не использовать
+
+        private void equivalentCheckDiffAlgosToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Stopwatch t = new Stopwatch();
+            t.Start();
+
+            FormulaTree.Nodes.Clear();
+            PopulateTree(CurrentFormula, null);
+            FormulaTree.ExpandAll();
+
+            KillImplications(FormulaTree.Nodes[0]);
+            DrownNegatives(FormulaTree.Nodes[0]);
+            //transformedTextbox.Text = GetFormulaFromTreeView(FormulaTree.Nodes[0]);
+
+            FormulaTree.ExpandAll();
+            RiseOR();
+
+            t.Stop();
+            TimeSpan ts = t.Elapsed;
+
+            string elapsedTime1 = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                ts.Hours, ts.Minutes, ts.Seconds,
+                ts.Milliseconds / 10);
+
+
+            string s1 = transformedTextbox.Text;
+
+            Stopwatch t2 = new Stopwatch();
+            t2.Start();
+            string s2 = GetDNFByFormula(CurrentFormula);
+            t2.Stop();
+            TimeSpan ts2 = t2.Elapsed;
+            string elapsedTime2 = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                ts2.Hours, ts2.Minutes, ts2.Seconds,
+                ts2.Milliseconds / 10);
+            IstBox.Text = s2;
+            if (CheckEquivalency(s1, s2))
+            {
+                MessageBox.Show("Эквивалентны");
+                MessageBox.Show("Время алгоритма через дерево: " + elapsedTime1 + ". Время алгоритма через таблицу истинности: " + elapsedTime2);
+            }
+            else
+            {
+                MessageBox.Show("Не эквивалентны");
+            }
+
+        }
+
+        private void checKEQToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string s1 = "(x|y)";
+            string s2 = "((x|y)&(z|(!z))";
+            if(!CheckEquivalency(s1, s2))
+            {
+                MessageBox.Show("Не эквивалентны");
             }
         }
     }
